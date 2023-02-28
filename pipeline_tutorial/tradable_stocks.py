@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from zipline.pipeline import Pipeline
-from zipline.pipeline.data import EquityPricing, master, sharadar
+from zipline.pipeline import EquityPricing, master, sharadar
 from zipline.pipeline.factors import AverageDollarVolume, Latest
-from zipline.pipeline.filters import AllPresent, All
 
 def TradableStocksUS(market_cap_filter=False):
     """
     Returns a Pipeline filter of tradable stocks, defined as:
-    
+
     - Common stocks only (no preferred stocks, ADRs, LPs, or ETFs)
     - Primary shares only
     - 200-day average dollar volume >= $2.5M
@@ -47,11 +45,12 @@ def TradableStocksUS(market_cap_filter=False):
     tradable_stocks = Latest([EquityPricing.close], mask=tradable_stocks) > 5
 
     # also require no missing data for 200 days
-    tradable_stocks = AllPresent(inputs=[EquityPricing.close], window_length=200, mask=tradable_stocks)
-    tradable_stocks = All([EquityPricing.volume.latest > 0], window_length=200, mask=tradable_stocks)
-    
+    tradable_stocks = EquityPricing.close.all_present(200, mask=tradable_stocks)
+    has_volume = EquityPricing.volume.latest > 0
+    tradable_stocks = has_volume.all(200, mask=tradable_stocks)
+
     if market_cap_filter:
         # also require market cap over $500M
         tradable_stocks = Latest([sharadar.Fundamentals.slice(dimension='ARQ', period_offset=0).MARKETCAP], mask=tradable_stocks) >= 500e6
-        
+
     return tradable_stocks
