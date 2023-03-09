@@ -1,4 +1,4 @@
-# Copyright 2021 QuantRocket LLC - All Rights Reserved
+# Copyright 2023 QuantRocket LLC - All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ def TradableStocksUS(market_cap_filter=False):
 
     # also require price > $5. Note that we use Latest(...) instead of EquityPricing.close.latest
     # so that we can pass a mask
-    tradable_stocks = Latest([EquityPricing.close], mask=tradable_stocks) > 5
+    tradable_stocks = Latest(EquityPricing.close, mask=tradable_stocks) > 5
 
     # also require no missing data for 200 days
     tradable_stocks = EquityPricing.close.all_present(200, mask=tradable_stocks)
