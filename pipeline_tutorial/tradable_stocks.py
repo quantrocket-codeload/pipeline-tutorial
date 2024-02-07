@@ -1,4 +1,4 @@
-# Copyright 2023 QuantRocket LLC - All Rights Reserved
+# Copyright 2024 QuantRocket LLC - All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,14 @@
 from zipline.pipeline import EquityPricing, master, sharadar
 from zipline.pipeline.factors import AverageDollarVolume, Latest
 
-def TradableStocksUS(market_cap_filter=False):
+def InitialUniverse():
     """
-    Returns a Pipeline filter of tradable stocks, defined as:
+    Returns a Pipeline filter that can be used as the
+    initial universe for a tradable stocks filter. The
+    initial universe consists of:
 
-    - Common stocks only (no preferred stocks, ADRs, LPs, or ETFs)
-    - Primary shares only
-    - 200-day average dollar volume >= $2.5M
-    - price >= $5
-    - 200 continuous days of price and volume.
-
-    If market_cap_filter=True, also requires market cap > $500M.
+    - common stocks only (no preferred stocks, ADRs, LPs, or ETFs)
+    - primary shares only
     """
     # Equities listed as common stock (not preferred stock, ETF, ADR, LP, etc)
     common_stock = master.SecuritiesMaster.usstock_SecurityType2.latest.eq('Common Stock')
@@ -34,11 +31,26 @@ def TradableStocksUS(market_cap_filter=False):
     # null usstock_PrimaryShareSid field (i.e. no pointer to a primary share)
     is_primary_share = master.SecuritiesMaster.usstock_PrimaryShareSid.latest.isnull()
 
-    # combine the security type filters to begin forming our universe
-    tradable_stocks = common_stock & is_primary_share
+    # combine the security type filters to form our initial universe
+    initial_universe = common_stock & is_primary_share
 
-    # also require high dollar volume
-    tradable_stocks = AverageDollarVolume(window_length=200, mask=tradable_stocks) >= 2.5e6
+    return initial_universe
+
+def TradableStocksUS(market_cap_filter=False):
+    """
+    Returns a Pipeline filter of tradable stocks, defined as:
+
+    - 200-day average dollar volume >= $2.5M
+    - price >= $5
+    - 200 continuous days of price and volume.
+
+    If market_cap_filter=True, also requires market cap > $500M.
+
+    This filter is intended to be used in conjunction with the filter
+    returns by InitialUniverse, above.
+    """
+    # require high dollar volume
+    tradable_stocks = AverageDollarVolume(window_length=200) >= 2.5e6
 
     # also require price > $5. Note that we use Latest(...) instead of EquityPricing.close.latest
     # so that we can pass a mask
